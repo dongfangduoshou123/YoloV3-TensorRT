@@ -1,27 +1,3 @@
-/*
- * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-//! \file sampleMNIST.cpp
-//! \brief This file contains the implementation of the MNIST sample.
-//!
-//! It builds a TensorRT engine by importing a trained MNIST Caffe model. It uses the engine to run
-//! inference on an input image of a digit.
-//! It can be run with the following command line:
-//! Command: ./sample_mnist [-h or --help] [-d=/path/to/data/dir or --datadir=/path/to/data/dir]
-
 #include "argsParser.h"
 #include "buffers.h"
 #include "common.h"
@@ -180,17 +156,11 @@ std::vector<BBoxInfo> decodeTensor(const int imageIdx, const int imageH, const i
                         maxIndex = i;
                     }
                 }
-//                if(objectness > 0){
-//                    std::cout << "obj:" << objectness << std::endl;
-//                }
-//                if(maxProb > 0){
-//                    std::cout << "maxprob:" << maxProb << std::endl;
-//                }
+
                 maxProb = objectness * maxProb;
 
 
                 if (maxProb > m_ProbThresh)
-//                if(objectness > 0)
                 {
                     addBBoxProposal(bx, by, bw, bh, tensor.stride, scalingFactor, xOffset, yOffset,
                                     maxIndex, maxProb, binfo);
@@ -291,7 +261,7 @@ template <typename T>
 using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
 
 void runWithYoloPlugin(){
-    cv::Mat img = cv::imread("/opt/caffe2_yolov3/TensorRT-6.0.1.5/samples/python/yolov3_onnx/dog.jpg");
+    cv::Mat img = cv::imread("/opt/TensorRT-6.0.1.5/samples/python/yolov3_onnx/dog.jpg");
     cv::Mat imgf;
     cv::Mat resized;
     cv::resize(img, resized, cv::Size(416, 416));
@@ -337,7 +307,7 @@ void runWithYoloPlugin(){
     }
 
     auto parsed = parser->parseFromFile(
-        "/opt/caffe2_yolov3/TensorRT-6.0.1.5/samples/python/yolov3_onnx/yolov3.onnx", static_cast<int>(gLogger.getReportableSeverity()));
+        "/opt/TensorRT-6.0.1.5/samples/python/yolov3_onnx/yolov3.onnx", static_cast<int>(gLogger.getReportableSeverity()));
     if (!parsed)
     {
         return false;
@@ -345,9 +315,9 @@ void runWithYoloPlugin(){
     auto *out13 = network->getOutput(0);
     auto *out26 = network->getOutput(1);
     auto *out52 = network->getOutput(2);
-    Yolo* yolo13 = new Yolo(7, 32, 13, 3);
-    Yolo* yolo26 = new Yolo(7, 16, 26, 3);
-    Yolo* yolo52 = new Yolo(7, 8, 52, 3);
+    Yolo* yolo13 = new Yolo(80, 32, 13, 3);
+    Yolo* yolo26 = new Yolo(80, 16, 26, 3);
+    Yolo* yolo52 = new Yolo(80, 8, 52, 3);
     IPluginV2Layer* p1 = network->addPluginV2(&out13, 1, *yolo13);
     IPluginV2Layer* p2 = network->addPluginV2(&out26, 1, *yolo26);
     IPluginV2Layer* p3 = network->addPluginV2(&out52, 1, *yolo52);
@@ -397,7 +367,7 @@ void runWithYoloPlugin(){
     tmp.hostBuffer;
     tmp.masks = {6,7,8};
     tmp.numBBoxes = 3;
-    tmp.numClasses = 7;
+    tmp.numClasses = 80;
     tmp.stride = 32;
     tmp.volume = tmp.gridSize
             * tmp.gridSize
@@ -481,176 +451,6 @@ void runWithYoloPlugin(){
     }
     cv::imshow("l", img);
     cv::waitKey();
-}
-
-void runOnlyConvBlocks(){
-    cv::Mat img = cv::imread("/opt/caffe2_yolov3/TensorRT-6.0.1.5/samples/python/yolov3_onnx/dog.jpg");
-    cv::Mat imgf;
-    cv::Mat resized;
-    cv::resize(img, resized, cv::Size(416, 416));
-    resized.convertTo(imgf,CV_32FC3, 1/255.0);
-
-
-    std::vector<cv::Mat>channles(3);
-    cv::split(imgf,channles);
-    for(int i = 0;i < 416;i ++){
-        for(int j = 0;j < 416;j ++){
-            std::cout << channles[0].at<float>(i,j) << "\n";
-        }
-    }
-    std::vector<float>data;
-    float* ptr1 = (float*)(channles[0].data);
-    float* ptr2 = (float*)(channles[1].data);
-    float* ptr3 = (float*)(channles[2].data);
-    data.insert(data.end(),ptr1,ptr1 + 416*416);
-    data.insert(data.end(),ptr2,ptr2 + 416*416);
-    data.insert(data.end(),ptr3,ptr3 + 416*416);
-
-    auto builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
-    if (!builder)
-    {
-        return false;
-    }
-
-    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(1U));
-    if (!network)
-    {
-        return false;
-    }
-    auto config = SampleUniquePtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
-    if (!config)
-    {
-        return false;
-    }
-
-    auto parser = SampleUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network,gLogger.getTRTLogger()));
-    if (!parser)
-    {
-        return false;
-    }
-
-    auto parsed = parser->parseFromFile(
-        "/opt/caffe2_yolov3/TensorRT-6.0.1.5/samples/python/yolov3_onnx/yolov3.onnx", static_cast<int>(gLogger.getReportableSeverity()));
-    if (!parsed)
-    {
-        return false;
-    }
-    network->getInput(0)->setName("data");
-    network->getOutput(0)->setName("yolo1");
-    network->getOutput(1)->setName("yolo2");
-    network->getOutput(2)->setName("yolo3");
-    std::string m_InputBlobName = "data";
-    builder->setMaxBatchSize(1);
-    config->setMaxWorkspaceSize(1024 * sizeof(char) *1024 * 10);
-
-    auto mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
-        builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
-
-    if (!mEngine)
-        return false;
-    std::cout << "build yolove engine successfull.\n";
-    std::cout << mEngine->getNbBindings() << " binds\n";
-    std::vector<void*> m_DeviceBuffers;
-    int m_InputBindingIndex = 0;
-    int m_InputSize = 416*416*3;
-
-
-    auto m_Context = mEngine->createExecutionContext();
-    assert(m_Context != nullptr);
-    m_InputBindingIndex = mEngine->getBindingIndex(m_InputBlobName.c_str());
-    assert(m_InputBindingIndex != -1);
-    assert(m_BatchSize <= static_cast<uint>(mEngine->getMaxBatchSize()));
-    m_DeviceBuffers.resize(mEngine->getNbBindings(), nullptr);
-    assert(m_InputBindingIndex != -1 && "Invalid input binding index");
-    ASSERT(cudaMalloc(&m_DeviceBuffers.at(m_InputBindingIndex),
-                             m_BatchSize * m_InputSize * sizeof(float)) == cudaSuccess);
-
-    std::vector<TensorInfo>m_OutputTensors;
-    TensorInfo tmp;
-    tmp.anchors = {10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326};
-    tmp.bindingIndex = 1;
-    tmp.blobName = "yolo1";
-    tmp.gridSize = 13;
-    tmp.hostBuffer;
-    tmp.masks = {6,7,8};
-    tmp.numBBoxes = 3;
-    tmp.numClasses = 7;
-    tmp.stride = 32;
-    tmp.volume = tmp.gridSize
-            * tmp.gridSize
-            * (tmp.numBBoxes * (5 + tmp.numClasses));
-    m_OutputTensors.push_back(tmp);
-    tmp.bindingIndex = 2;
-    tmp.blobName = "yolo2";
-    tmp.gridSize = 26;
-    tmp.masks = {3,4,5};
-    tmp.stride = 16;
-    tmp.volume = tmp.gridSize
-            * tmp.gridSize
-            * (tmp.numBBoxes * (5 + tmp.numClasses));
-    m_OutputTensors.push_back(tmp);
-    tmp.bindingIndex = 3;
-    tmp.blobName = "yolo3";
-    tmp.gridSize = 52;
-    tmp.masks = {0,1,2};
-    tmp.stride = 8;
-    tmp.volume = tmp.gridSize
-            * tmp.gridSize
-            * (tmp.numBBoxes * (5 + tmp.numClasses));
-    m_OutputTensors.push_back(tmp);
-    for (TensorInfo& tensor : m_OutputTensors)
-    {
-        tensor.bindingIndex = mEngine->getBindingIndex(tensor.blobName.c_str());
-        assert((tensor.bindingIndex != -1) && "Invalid output binding index");
-        ASSERT(cudaMalloc(&m_DeviceBuffers.at(tensor.bindingIndex),
-                                 m_BatchSize * tensor.volume * sizeof(float))==cudaSuccess);
-        ASSERT(
-            cudaMallocHost(&tensor.hostBuffer, tensor.volume * m_BatchSize * sizeof(float))==cudaSuccess);
-    }
-    cudaStream_t m_CudaStream;
-    cudaEvent_t m_CudaEvent;
-    ASSERT(cudaEventCreate(&m_CudaEvent) == cudaSuccess);
-    ASSERT(cudaStreamCreate(&m_CudaStream) == cudaSuccess);
-
-    assert((mEngine->getNbBindings() == (1 + m_OutputTensors.size())
-            && "Binding info doesn't match between cfg and engine file \n"));
-
-    for (auto tensor : m_OutputTensors)
-    {
-        assert(!strcmp(mEngine->getBindingName(tensor.bindingIndex), tensor.blobName.c_str())
-               && "Blobs names dont match between cfg and engine file \n");
-        std::cout << get3DTensorVolume(mEngine->getBindingDimensions(tensor.bindingIndex)) << " vs "
-                  << tensor.volume;
-        assert(get3DTensorVolume(mEngine->getBindingDimensions(tensor.bindingIndex))
-                   == tensor.volume
-               && "Tensor volumes dont match between cfg and engine file \n");
-    }
-
-    assert(mEngine->bindingIsInput(m_InputBindingIndex) && "Incorrect input binding index \n");
-    assert(mEngine->getBindingName(m_InputBindingIndex) == m_InputBlobName
-           && "Input blob name doesn't match between config and engine file");
-    assert(get3DTensorVolume(mEngine->getBindingDimensions(m_InputBindingIndex)) == m_InputSize);
-
-    //inference
-
-    time_t t;
-    time(&t);
-    for(int i =0;i < 1000;i ++){
-        doInference((void*)data.data(), 1, m_CudaStream,m_CudaEvent,m_Context, m_DeviceBuffers,
-                    m_InputBindingIndex, m_InputSize,
-                    m_OutputTensors);
-//        std::vector<BBoxInfo> binfo;
-//        for (auto& tensor : m_OutputTensors)
-//        {
-//            std::vector<BBoxInfo> curBInfo = decodeTensor(0, img.rows, img.cols, tensor);
-//            binfo.insert(binfo.end(), curBInfo.begin(), curBInfo.end());
-//        }
-//        auto remaining = nmsAllClasses(0.5, binfo, 7);
-    }
-
-    time_t t1;
-    time(&t1);
-    std::cout << "cost " << difftime(t,t1) << " seconds for 1000 iters\n";
 }
 
 int main(int argc, char** argv)
