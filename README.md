@@ -15,9 +15,11 @@ Feature:
     4.include the post process such as nms to get the final detection result.
     
 Requirment:
+
     Install the TensorRT6.0.1.5,(I use CUDA10.1 version, but other cuda version's TensorRT should also work well).
 
 
 Reference:
+
     1:https://github.com/NVIDIA-AI-IOT/deepstream_reference_apps (restructure branch, not master branch)
     2:https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide
