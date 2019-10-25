@@ -8,6 +8,7 @@ In C++, I first parse the yolov3.onnx, then use the TensorRT's api to edit the p
 Run in fp16 and int8 has not coded and tested from now.
 
 Feature:
+
     1:Use TensorRT's new plugin interface IPluginV2Ext to implement the yolo plugin.
     2:Run on the current newest TensorRT version 6.0.1.5.
     3:test on NVIDIA 1060 at 37 fps.
