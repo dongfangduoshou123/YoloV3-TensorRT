@@ -257,11 +257,129 @@ std::vector<BBoxInfo> nmsAllClasses(const float nmsThresh, std::vector<BBoxInfo>
 
 
 
+class YoloIInt8Calibrator : public IInt8EntropyCalibrator2 {
+public:
+    YoloIInt8Calibrator(int bcsz, int bcs, std::string datadir)
+        :batchsize(bcsz),batches(bcs),clibdatadir(datadir),curbatch(0),
+    imgindex(0),mInputBlobName("data"){
+        clbimagepaths = ls(clibdatadir, batchsize * batches);
+        assert(clbimagepaths.size() == batchsize * batches);
+        mInputCount = batchsize * 3 * 416 * 416;
+        CHECK(cudaMalloc(&mDeviceInput, mInputCount * sizeof(float)));
+    }
+
+    virtual int getBatchSize() const override{
+        return batchsize;
+    }
+
+
+    virtual bool getBatch(void* bindings[], const char* names[], int nbBindings) override{
+        if(curbatch < batches){
+            curbatch ++;
+            std::vector<float>data;
+            for(int i = 0;i < batchsize; i++){
+                assert(imgindex < batchsize * batches);
+                cv::Mat img = getImage(imgindex);
+                imgindex ++;
+                cv::Mat resized;
+                cv::Mat imgf;
+                cv::resize(img, resized, cv::Size(416, 416));
+                resized.convertTo(imgf,CV_32FC3, 1/255.0);
+                std::vector<cv::Mat>channles(3);
+                cv::split(imgf,channles);
+                float* ptr1 = (float*)(channles[0].data);
+                float* ptr2 = (float*)(channles[1].data);
+                float* ptr3 = (float*)(channles[2].data);
+                data.insert(data.end(),ptr1,ptr1 + 416*416);
+                data.insert(data.end(),ptr2,ptr2 + 416*416);
+                data.insert(data.end(),ptr3,ptr3 + 416*416);
+            }
+            CHECK(cudaMemcpy(mDeviceInput, data.data(), mInputCount * sizeof(float), cudaMemcpyHostToDevice));
+            assert(!strcmp(names[0], mInputBlobName));
+            bindings[0] = mDeviceInput;
+        }else
+            return false;
+    }
+
+    virtual const void* readCalibrationCache(std::size_t& length) override{
+
+    }
+
+    virtual void writeCalibrationCache(const void* ptr, std::size_t length) override{
+
+    }
+
+private:
+
+    cv::Mat getImage(int index){
+        cv::Mat img = cv::imread(clbimagepaths[index]);
+        return std::move(img);
+    }
+
+    std::vector<std::string> ls(std::string path,long howmany)
+    {
+        std::vector<std::string> ret;
+        DIR* dirp = opendir(path.c_str());
+        if(!dirp)
+        {
+            return ret;
+        }
+        struct stat st;
+        struct dirent *dir;
+        while((dir = readdir(dirp)) != NULL)
+        {
+            if(strcmp(dir->d_name,".") == 0 ||
+                    strcmp(dir->d_name,"..") == 0)
+            {
+                continue;
+            }
+            std::string full_path = path + dir->d_name;
+            if(lstat(full_path.c_str(),&st) == -1)
+            {
+                continue;
+            }
+            std::string name = dir->d_name;
+
+            //replace the blank char in name with "%$".
+            while(name.find(" ") != std::string::npos)
+            {
+                name.replace(name.find(" "),1,"$%");
+            }
+
+            if(S_ISDIR(st.st_mode))   //S_ISDIR()宏判断是否是目录文件
+            {
+                continue;
+            }
+            else if(full_path.find_last_of(".jpg") != std::string::npos)
+            {
+                ret.push_back(full_path);
+            }
+            if(ret.size() == howmany)
+                break;
+        }
+        closedir(dirp);
+        sort(ret.begin(),ret.end());
+
+        return std::move(ret);
+    }
+
+    std::string clibdatadir;
+    int batches;
+    int batchsize;
+    int curbatch;
+    int imgindex;
+    std::vector<std::string> clbimagepaths;
+    void* mDeviceInput{nullptr};
+    int mInputCount;
+    const char* mInputBlobName;
+};
+
+
 template <typename T>
 using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
 
-void runWithYoloPlugin(){
-    cv::Mat img = cv::imread("/opt/TensorRT-6.0.1.5/samples/python/yolov3_onnx/dog.jpg");
+void runWithYoloPlugin(bool int8=false){
+    cv::Mat img = cv::imread("/opt/caffe2_yolov3/TensorRT-6.0.1.5/samples/python/yolov3_onnx/dog.jpg");
     cv::Mat imgf;
     cv::Mat resized;
     cv::resize(img, resized, cv::Size(416, 416));
@@ -270,11 +388,6 @@ void runWithYoloPlugin(){
 
     std::vector<cv::Mat>channles(3);
     cv::split(imgf,channles);
-    for(int i = 0;i < 416;i ++){
-        for(int j = 0;j < 416;j ++){
-            std::cout << channles[0].at<float>(i,j) << "\n";
-        }
-    }
     std::vector<float>data;
     float* ptr1 = (float*)(channles[0].data);
     float* ptr2 = (float*)(channles[1].data);
@@ -283,7 +396,7 @@ void runWithYoloPlugin(){
     data.insert(data.end(),ptr2,ptr2 + 416*416);
     data.insert(data.end(),ptr3,ptr3 + 416*416);
 
-    auto builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
+    SampleUniquePtr<nvinfer1::IBuilder> builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
     if (!builder)
     {
         return false;
@@ -315,9 +428,9 @@ void runWithYoloPlugin(){
     auto *out13 = network->getOutput(0);
     auto *out26 = network->getOutput(1);
     auto *out52 = network->getOutput(2);
-    Yolo* yolo13 = new Yolo(80, 32, 13, 3);
-    Yolo* yolo26 = new Yolo(80, 16, 26, 3);
-    Yolo* yolo52 = new Yolo(80, 8, 52, 3);
+    Yolo* yolo13 = new Yolo(7, 32, 13, 3);
+    Yolo* yolo26 = new Yolo(7, 16, 26, 3);
+    Yolo* yolo52 = new Yolo(7, 8, 52, 3);
     IPluginV2Layer* p1 = network->addPluginV2(&out13, 1, *yolo13);
     IPluginV2Layer* p2 = network->addPluginV2(&out26, 1, *yolo26);
     IPluginV2Layer* p3 = network->addPluginV2(&out52, 1, *yolo52);
@@ -333,9 +446,18 @@ void runWithYoloPlugin(){
     p3->getOutput(0)->setName("yolo3");
     network->getInput(0)->setName("data");
     std::string m_InputBlobName = "data";
-    builder->setMaxBatchSize(1);
-    config->setMaxWorkspaceSize(1024 * sizeof(char) *1024 * 10);
 
+    std::unique_ptr<IInt8Calibrator> calibrator;
+    config->setAvgTimingIterations(1);
+    config->setMinTimingIterations(1);
+    config->setMaxWorkspaceSize(1_GiB);
+    if(int8){
+        config->setFlag(BuilderFlag::kINT8);
+        calibrator.reset(new YoloIInt8Calibrator(1,10,"/opt/data/"));
+        config->setInt8Calibrator(calibrator.get());
+    }
+
+    builder->setMaxBatchSize(1);
     auto mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
         builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
 
@@ -367,7 +489,7 @@ void runWithYoloPlugin(){
     tmp.hostBuffer;
     tmp.masks = {6,7,8};
     tmp.numBBoxes = 3;
-    tmp.numClasses = 80;
+    tmp.numClasses = 7;
     tmp.stride = 32;
     tmp.volume = tmp.gridSize
             * tmp.gridSize
@@ -436,7 +558,7 @@ void runWithYoloPlugin(){
         std::vector<BBoxInfo> binfo;
         for (auto& tensor : m_OutputTensors)
         {
-            std::vector<BBoxInfo> curBInfo = decodeTensor(0, img.rows, img.cols, tensor);
+            std::vector<BBoxInfo> curBInfo = decodeTensor(0, 416, 416, tensor);
             binfo.insert(binfo.end(), curBInfo.begin(), curBInfo.end());
         }
         remaining = nmsAllClasses(0.5, binfo, 7);
@@ -447,13 +569,13 @@ void runWithYoloPlugin(){
     std::cout << "cost " << difftime(t,t1) << " seconds for 1000 iters\n";
     for (BBoxInfo &b : remaining)
     {
-        cv::rectangle(img, cv::Rect(b.box.x1,b.box.y1, b.box.x2 - b.box.x1, b.box.y2 - b.box.y1),cv::Scalar(255,0,0));
+        cv::rectangle(resized, cv::Rect(b.box.x1,b.box.y1, b.box.x2 - b.box.x1, b.box.y2 - b.box.y1),cv::Scalar(255,0,0));
     }
-    cv::imshow("l", img);
+    cv::imshow("l", resized);
     cv::waitKey();
 }
 
 int main(int argc, char** argv)
 {
-    runWithYoloPlugin();
+    runWithYoloPlugin(true);
 }
