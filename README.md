@@ -5,13 +5,11 @@ I use the TensorRT's yolov3 python example's script(location at TensorRT-ROOT/sa
 
 In C++, I first parse the yolov3.onnx, then use the TensorRT's api to edit the parsed network(add the yoloplugin to the network,and mark the yoloplugin's output as network's output, and unmark the original output), then build the engine, and run inference.
 
-Run in fp16 and int8 has not coded and tested from now.
-
 Feature:
 
     1:Use TensorRT's new plugin interface IPluginV2Ext to implement the yolo plugin.
     2:Run on the current newest TensorRT version 6.0.1.5.
-    3:test on NVIDIA 1060 at 37 fps.
+    3:test on NVIDIA 1060 at 37 fps in f32 mode and 77 fps in int8 mode.
     4.include the post process such as nms to get the final detection result.
     
 Requirment:
