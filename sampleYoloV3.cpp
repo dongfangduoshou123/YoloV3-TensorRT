@@ -428,9 +428,9 @@ void runWithYoloPlugin(bool int8=false){
     auto *out13 = network->getOutput(0);
     auto *out26 = network->getOutput(1);
     auto *out52 = network->getOutput(2);
-    Yolo* yolo13 = new Yolo(7, 32, 13, 3);
-    Yolo* yolo26 = new Yolo(7, 16, 26, 3);
-    Yolo* yolo52 = new Yolo(7, 8, 52, 3);
+    Yolo* yolo13 = new Yolo(80, 32, 13, 3);
+    Yolo* yolo26 = new Yolo(80, 16, 26, 3);
+    Yolo* yolo52 = new Yolo(80, 8, 52, 3);
     IPluginV2Layer* p1 = network->addPluginV2(&out13, 1, *yolo13);
     IPluginV2Layer* p2 = network->addPluginV2(&out26, 1, *yolo26);
     IPluginV2Layer* p3 = network->addPluginV2(&out52, 1, *yolo52);
@@ -489,7 +489,7 @@ void runWithYoloPlugin(bool int8=false){
     tmp.hostBuffer;
     tmp.masks = {6,7,8};
     tmp.numBBoxes = 3;
-    tmp.numClasses = 7;
+    tmp.numClasses = 80;
     tmp.stride = 32;
     tmp.volume = tmp.gridSize
             * tmp.gridSize
@@ -561,7 +561,7 @@ void runWithYoloPlugin(bool int8=false){
             std::vector<BBoxInfo> curBInfo = decodeTensor(0, 416, 416, tensor);
             binfo.insert(binfo.end(), curBInfo.begin(), curBInfo.end());
         }
-        remaining = nmsAllClasses(0.5, binfo, 7);
+        remaining = nmsAllClasses(0.5, binfo, 80);
     }
 
     time_t t1;
