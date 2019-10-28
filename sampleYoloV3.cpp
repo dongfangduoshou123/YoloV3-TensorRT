@@ -379,7 +379,7 @@ template <typename T>
 using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
 
 void runWithYoloPlugin(bool int8=false){
-    cv::Mat img = cv::imread("/opt/caffe2_yolov3/TensorRT-6.0.1.5/samples/python/yolov3_onnx/dog.jpg");
+    cv::Mat img = cv::imread("/opt/TensorRT-6.0.1.5/samples/python/yolov3_onnx/dog.jpg");
     cv::Mat imgf;
     cv::Mat resized;
     cv::resize(img, resized, cv::Size(416, 416));
