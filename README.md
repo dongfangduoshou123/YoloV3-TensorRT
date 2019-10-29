@@ -12,6 +12,12 @@ Feature:
     3:test on NVIDIA 1060 at 37 fps in f32 mode and 77 fps in int8 mode.
     4.include the post process such as nms to get the final detection result.
     
+Build:
+
+    1.mkdir build && cd build
+    2.cmake .. -DTensorRT-ROOT=/path/to/tensorrt/root -DCUDA-ROOT=path/to/cuda/root -DOpenCV-ROOT=/path/to/opencv/root
+    3.make -j8
+    Note: I use opencv4.0.0, If you use opencv2.x or opencv3.x, please edit the ProcessDependency.cmake about the opencv lib config , beacuse may some so is not exsit in older opencv version, and opencv include config from: include_directories${OpenCV-ROOT}/include/opencv4) to include_directories(${OpenCV-ROOT}/include)
 Requirment:
 
     Install the TensorRT6.0.1.5,(I use CUDA10.1 version, but other cuda version's TensorRT should also work well).
