@@ -27,14 +27,14 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wdeprecated-declarations")
 set(TensorRTYOLOV3_SRCS)
 
 set(TensorRTYOLOV3_HDRS)
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../common)
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/common)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 list(APPEND TensorRTYOLOV3_SRCS
   "${CMAKE_CURRENT_SOURCE_DIR}/sampleYoloV3.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../common/getOptions.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../common/logger.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../common/sampleEngines.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../common/sampleOptions.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/common/getOptions.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/common/logger.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/common/sampleEngines.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/common/sampleOptions.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/yoloPlugin.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/kernel.cu"
 )
