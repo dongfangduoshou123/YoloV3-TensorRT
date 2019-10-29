@@ -1,74 +1,25 @@
 /*
 created by wzq 2019 10.24
  */
+/*
+ * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "kernel.h"
 #include "yoloPlugin.h"
-#include <cstring>
-#include <cublas_v2.h>
-#include <cudnn.h>
+#include <assert.h>
 #include <iostream>
-#include <sstream>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-
-inline __device__ float sigmoidGPU(const float& x) { return 1.0f / (1.0f + __expf(-x)); }
-
-__global__ void gpuYoloLayerV3(const float* input, float* output, const uint gridSize, const uint numOutputClasses,
-                               const uint numBBoxes)
-{
-    uint x_id = blockIdx.x * blockDim.x + threadIdx.x;
-    uint y_id = blockIdx.y * blockDim.y + threadIdx.y;
-    uint z_id = blockIdx.z * blockDim.z + threadIdx.z;
-
-    if ((x_id >= gridSize) || (y_id >= gridSize) || (z_id >= numBBoxes))
-    {
-        return;
-    }
-
-    const int numGridCells = gridSize * gridSize;
-    const int bbindex = y_id * gridSize + x_id;
-
-    output[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 0)]
-        = sigmoidGPU(input[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 0)]);
-
-    output[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 1)]
-        = sigmoidGPU(input[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 1)]);
-
-    output[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 2)]
-        = __expf(input[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 2)]);
-
-    output[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 3)]
-        = __expf(input[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 3)]);
-
-    output[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 4)]
-        = sigmoidGPU(input[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + 4)]);
-
-    for (uint i = 0; i < numOutputClasses; ++i)
-    {
-        output[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + (5 + i))]
-            = sigmoidGPU(input[bbindex + numGridCells * (z_id * (5 + numOutputClasses) + (5 + i))]);
-    }
-}
-
-cudaError_t cudaYoloLayerV3(const void* input, void* output, const uint& batchSize, const uint& gridSize,
-                            const uint& numOutputClasses, const uint& numBBoxes,
-                            uint64_t outputSize, cudaStream_t stream)
-{
-    dim3 threads_per_block(16, 16, 4);
-    dim3 number_of_blocks((gridSize / threads_per_block.x) + 1,
-                          (gridSize / threads_per_block.y) + 1,
-                          (numBBoxes / threads_per_block.z) + 1);
-    for (int batch = 0; batch < batchSize; ++batch)
-    {
-        gpuYoloLayerV3<<<number_of_blocks, threads_per_block, 0, stream>>>(
-            reinterpret_cast<const float*>(input) + (batch * outputSize),
-            reinterpret_cast<float*>(output) + (batch * outputSize), gridSize, numOutputClasses,
-            numBBoxes);
-    }
-    return cudaGetLastError();
-}
 
 using namespace nvinfer1;
 using nvinfer1::plugin::Yolo;
@@ -78,6 +29,22 @@ namespace
 {
 const char* Yolo_PLUGIN_VERSION{"1"};
 const char* Yolo_PLUGIN_NAME{"Yolo_TRT"};
+// Write values into buffer
+template <typename T>
+void write(char*& buffer, const T& val)
+{
+    *reinterpret_cast<T*>(buffer) = val;
+    buffer += sizeof(T);
+}
+
+// Read values from buffer
+template <typename T>
+T read(const char*& buffer)
+{
+    T val = *reinterpret_cast<const T*>(buffer);
+    buffer += sizeof(T);
+    return val;
+}
 } // namespace
 
 PluginFieldCollection YoloPluginCreator::mFC{};
@@ -99,7 +66,7 @@ Yolo::Yolo(const void* buffer, size_t length)
     numclass_ = read<int>(d);
     stride_ = read<int>(d);
     gridesize_ = read<int>(d);
-    ASSERT(d == a + length);
+    assert(d == a + length);
 }
 
 int Yolo::getNbOutputs() const
@@ -109,8 +76,8 @@ int Yolo::getNbOutputs() const
 
 Dims Yolo::getOutputDimensions(int index, const Dims* inputs, int nbInputDims)
 {
-    ASSERT(nbInputDims == 1);
-    ASSERT(inputs[0].nbDims == 3);
+    assert(nbInputDims == 1);
+    assert(inputs[0].nbDims == 3);
     return inputs[0];
 }
 
@@ -131,24 +98,34 @@ size_t Yolo::getWorkspaceSize(int maxBatchSize) const
 
 int Yolo::enqueue(int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream)
 {
-    ASSERT(cudaYoloLayerV3(inputs[0],outputs[0],batchSize, gridesize_,numclass_, numanchors_, gridesize_*gridesize_*numanchors_*(5 + numclass_),stream)
+    assert(cudaYoloLayerV3(inputs[0],outputs[0],batchSize, gridesize_,numclass_, numanchors_, gridesize_*gridesize_*numanchors_*(5 + numclass_),stream)
             == cudaSuccess);
     return 0;
 }
 
 size_t Yolo::getSerializationSize() const
 {
-    return 4 * sizeof(int);
+    return sizeof(numanchors_) + sizeof(numclass_) + sizeof(stride_) + sizeof(gridesize_);
 }
-
+//jie shou zou bo de cheng guo.
 void Yolo::serialize(void* buffer) const
 {
-    char *d = reinterpret_cast<char*>(buffer), *a = d;
-    write(d, numanchors_);
-    write(d, numclass_);
-    write(d, stride_);
-    write(d, gridesize_);
-    ASSERT(d == a + getSerializationSize());
+    std::cout << "jinle\n";
+    *reinterpret_cast<int*>(buffer) = numanchors_;
+    buffer += sizeof(int);
+    std::cout << "buffer:" << buffer << std::endl;
+
+    *reinterpret_cast<int*>(buffer) = numclass_;
+    buffer += sizeof(int);
+    std::cout << "buffer:" << buffer << std::endl;
+
+    *reinterpret_cast<int*>(buffer) = stride_;
+    buffer += sizeof(int);
+    std::cout << "buffer:" << buffer << std::endl;
+
+    *reinterpret_cast<int*>(buffer) = gridesize_;
+    buffer += sizeof(int);
+    std::cout << "buffer:" << buffer << std::endl;
 }
 
 bool Yolo::supportsFormat(DataType type, PluginFormat format) const
@@ -170,7 +147,7 @@ const char* Yolo::getPluginNamespace() const
 // Return the DataType of the plugin output at the requested index
 DataType Yolo::getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const
 {
-    ASSERT(index == 0);
+    assert(index == 0);
     return DataType::kFLOAT;
 }
 
@@ -191,7 +168,7 @@ void Yolo::configurePlugin(const Dims* inputDims, int nbInputs, const Dims* outp
     const DataType* inputTypes, const DataType* outputTypes, const bool* inputIsBroadcast,
     const bool* outputIsBroadcast, PluginFormat floatFormat, int maxBatchSize)
 {
-    ASSERT(*inputTypes == DataType::kFLOAT && floatFormat == PluginFormat::kNCHW);
+    assert(*inputTypes == DataType::kFLOAT && floatFormat == PluginFormat::kNCHW);
     assert(nbInputs == 1);
     assert(inputDims != nullptr);
 }
@@ -258,25 +235,25 @@ const PluginFieldCollection* YoloPluginCreator::getFieldNames()
 
 IPluginV2Ext* YoloPluginCreator::createPlugin(const char* name, const PluginFieldCollection* fc)
 {
-    ASSERT(!strcmp(name, getPluginName()));
+    assert(!strcmp(name, getPluginName()));
     const PluginField* fields = fc->fields;
     for (int i = 0; i < fc->nbFields; ++i)
     {
         const char* attrName = fields[i].name;
         if (!strcmp(attrName, "numclass"))
         {
-            ASSERT(fields[i].type == PluginFieldType::kINT32);
+            assert(fields[i].type == PluginFieldType::kINT32);
             numclass_ = *(static_cast<const int*>(fields[i].data));
         }
         else if (!strcmp(attrName, "stride"))
         {
-            ASSERT(fields[i].type == PluginFieldType::kINT32);
+            assert(fields[i].type == PluginFieldType::kINT32);
             stride_ = *(static_cast<const int*>(fields[i].data));
         }else if(!strcmp(attrName, "gridesize")){
-            ASSERT(fields[i].type == PluginFieldType::kINT32);
+            assert(fields[i].type == PluginFieldType::kINT32);
             gridesize_ = *(static_cast<const int*>(fields[i].data));
         }else if(!strcmp(attrName, "numanchors")){
-            ASSERT(fields[i].type == PluginFieldType::kINT32);
+            assert(fields[i].type == PluginFieldType::kINT32);
             numanchors_ = *(static_cast<const int*>(fields[i].data));
         }
     }
@@ -291,3 +268,4 @@ IPluginV2Ext* YoloPluginCreator::deserializePlugin(const char* name, const void*
     obj->setPluginNamespace(mNamespace.c_str());
     return obj;
 }
+REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
