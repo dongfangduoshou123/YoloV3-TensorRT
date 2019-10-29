@@ -425,12 +425,40 @@ void runWithYoloPlugin(bool int8=false){
     {
         return false;
     }
-    auto *out13 = network->getOutput(0);
-    auto *out26 = network->getOutput(1);
-    auto *out52 = network->getOutput(2);
-    Yolo* yolo13 = new Yolo(80, 32, 13, 3);
-    Yolo* yolo26 = new Yolo(80, 16, 26, 3);
-    Yolo* yolo52 = new Yolo(80, 8, 52, 3);
+    nvinfer1::ITensor *out13 = network->getOutput(0);
+    nvinfer1::ITensor *out26 = network->getOutput(1);
+    nvinfer1::ITensor *out52 = network->getOutput(2);
+    std::cout << out13->getDimensions().nbDims
+              << " "
+              << out13->getDimensions().d[0]
+              << " "
+              << out13->getDimensions().d[1]
+              << " "
+              << out13->getDimensions().d[2]
+              << " "
+              << out13->getDimensions().d[3] << std::endl;
+    std::cout << out26->getDimensions().nbDims
+              << " "
+              << out26->getDimensions().d[0]
+              << " "
+              << out26->getDimensions().d[1]
+              << " "
+              << out26->getDimensions().d[2]
+              << " "
+              << out26->getDimensions().d[3] << std::endl;
+    std::cout << out52->getDimensions().nbDims
+              << " "
+              << out52->getDimensions().d[0]
+              << " "
+              << out52->getDimensions().d[1]
+              << " "
+              << out52->getDimensions().d[2]
+              << " "
+              << out52->getDimensions().d[3] << std::endl;
+
+    Yolo* yolo13 = new Yolo(7, 32, 13, 3);
+    Yolo* yolo26 = new Yolo(7, 16, 26, 3);
+    Yolo* yolo52 = new Yolo(7, 8,  52, 3);
     IPluginV2Layer* p1 = network->addPluginV2(&out13, 1, *yolo13);
     IPluginV2Layer* p2 = network->addPluginV2(&out26, 1, *yolo26);
     IPluginV2Layer* p3 = network->addPluginV2(&out52, 1, *yolo52);
@@ -438,14 +466,17 @@ void runWithYoloPlugin(bool int8=false){
     network->markOutput(*p1->getOutput(0));
     network->markOutput(*p2->getOutput(0));
     network->markOutput(*p3->getOutput(0));
+
     network->unmarkOutput(*out13);
     network->unmarkOutput(*out26);
     network->unmarkOutput(*out52);
+
     p1->getOutput(0)->setName("yolo1");
     p2->getOutput(0)->setName("yolo2");
     p3->getOutput(0)->setName("yolo3");
+
     network->getInput(0)->setName("data");
-    std::string m_InputBlobName = "data";
+
 
     std::unique_ptr<IInt8Calibrator> calibrator;
     config->setAvgTimingIterations(1);
@@ -453,13 +484,33 @@ void runWithYoloPlugin(bool int8=false){
     config->setMaxWorkspaceSize(1_GiB);
     if(int8){
         config->setFlag(BuilderFlag::kINT8);
-        calibrator.reset(new YoloIInt8Calibrator(1,10,"/opt/data/"));
+        calibrator.reset(new YoloIInt8Calibrator(1,20,"/opt/data/"));
         config->setInt8Calibrator(calibrator.get());
     }
 
     builder->setMaxBatchSize(1);
-    auto mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
-        builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
+    std::string trtpath = "/opt/yolov3.trt";
+    std::shared_ptr<nvinfer1::ICudaEngine> mEngine;
+    if(access(trtpath.c_str(),0) == 0){
+        std::cout << "deserialize for local " << trtpath << std::endl;
+        nvinfer1::IRuntime*iruntime = nvinfer1::createInferRuntime(gLogger.getTRTLogger());
+        std::ifstream intrt(trtpath, ios::binary);
+        intrt.seekg(0, std::ios::beg);
+        size_t length = intrt.tellg();
+        intrt.seekg(0, std::ios::beg);
+        std::vector<char>data(length);
+        intrt.read(data.data(),length);
+        mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(iruntime->deserializeCudaEngine(data.data(),length),  samplesCommon::InferDeleter());
+    }else{
+        mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
+            builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
+        IHostMemory* engine_serialize = mEngine->serialize();
+
+        std::ofstream out(trtpath, ios::binary);
+        out.write(engine_serialize->data(),engine_serialize->size());
+        std::cout << "serialize the engine to " << trtpath << std::endl;
+    }
+
 
     if (!mEngine)
         return false;
@@ -472,12 +523,13 @@ void runWithYoloPlugin(bool int8=false){
 
     auto m_Context = mEngine->createExecutionContext();
     assert(m_Context != nullptr);
+    std::string m_InputBlobName = "data";
     m_InputBindingIndex = mEngine->getBindingIndex(m_InputBlobName.c_str());
     assert(m_InputBindingIndex != -1);
     assert(m_BatchSize <= static_cast<uint>(mEngine->getMaxBatchSize()));
     m_DeviceBuffers.resize(mEngine->getNbBindings(), nullptr);
     assert(m_InputBindingIndex != -1 && "Invalid input binding index");
-    ASSERT(cudaMalloc(&m_DeviceBuffers.at(m_InputBindingIndex),
+    assert(cudaMalloc(&m_DeviceBuffers.at(m_InputBindingIndex),
                              m_BatchSize * m_InputSize * sizeof(float)) == cudaSuccess);
 
     std::vector<TensorInfo>m_OutputTensors;
@@ -489,7 +541,7 @@ void runWithYoloPlugin(bool int8=false){
     tmp.hostBuffer;
     tmp.masks = {6,7,8};
     tmp.numBBoxes = 3;
-    tmp.numClasses = 80;
+    tmp.numClasses = 7;
     tmp.stride = 32;
     tmp.volume = tmp.gridSize
             * tmp.gridSize
@@ -517,15 +569,15 @@ void runWithYoloPlugin(bool int8=false){
     {
         tensor.bindingIndex = mEngine->getBindingIndex(tensor.blobName.c_str());
         assert((tensor.bindingIndex != -1) && "Invalid output binding index");
-        ASSERT(cudaMalloc(&m_DeviceBuffers.at(tensor.bindingIndex),
+        assert(cudaMalloc(&m_DeviceBuffers.at(tensor.bindingIndex),
                                  m_BatchSize * tensor.volume * sizeof(float))==cudaSuccess);
-        ASSERT(
+        assert(
             cudaMallocHost(&tensor.hostBuffer, tensor.volume * m_BatchSize * sizeof(float))==cudaSuccess);
     }
     cudaStream_t m_CudaStream;
     cudaEvent_t m_CudaEvent;
-    ASSERT(cudaEventCreate(&m_CudaEvent) == cudaSuccess);
-    ASSERT(cudaStreamCreate(&m_CudaStream) == cudaSuccess);
+    assert(cudaEventCreate(&m_CudaEvent) == cudaSuccess);
+    assert(cudaStreamCreate(&m_CudaStream) == cudaSuccess);
 
     assert((mEngine->getNbBindings() == (1 + m_OutputTensors.size())
             && "Binding info doesn't match between cfg and engine file \n"));
@@ -561,7 +613,7 @@ void runWithYoloPlugin(bool int8=false){
             std::vector<BBoxInfo> curBInfo = decodeTensor(0, 416, 416, tensor);
             binfo.insert(binfo.end(), curBInfo.begin(), curBInfo.end());
         }
-        remaining = nmsAllClasses(0.5, binfo, 80);
+        remaining = nmsAllClasses(0.5, binfo, 7);
     }
 
     time_t t1;
