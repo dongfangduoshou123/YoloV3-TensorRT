@@ -456,12 +456,47 @@ void runWithYoloPlugin(bool int8=false){
               << " "
               << out52->getDimensions().d[3] << std::endl;
 
-    Yolo* yolo13 = new Yolo(80, 32, 13, 3);
-    Yolo* yolo26 = new Yolo(80, 16, 26, 3);
-    Yolo* yolo52 = new Yolo(80, 8,  52, 3);
-    IPluginV2Layer* p1 = network->addPluginV2(&out13, 1, *yolo13);
-    IPluginV2Layer* p2 = network->addPluginV2(&out26, 1, *yolo26);
-    IPluginV2Layer* p3 = network->addPluginV2(&out52, 1, *yolo52);
+   YoloPluginCreator yolocreator;
+    int numclass = 80;
+    int stride1 = 32;
+    int gridsize1 = 13;
+    int numanchors = 3;
+    std::vector<PluginField> mPluginAttributes1 = {
+        PluginField("numclass", &numclass, PluginFieldType::kINT32, 1),
+        PluginField("stride", &stride1, PluginFieldType::kINT32, 1),
+        PluginField("gridsize", &gridsize1, PluginFieldType::kINT32, 1),
+        PluginField("numanchors", &numanchors, PluginFieldType::kINT32, 1)
+    };
+    PluginFieldCollection mFC1;
+    mFC1.nbFields = mPluginAttributes1.size();
+    mFC1.fields = mPluginAttributes1.data();
+    IPluginV2Layer* p1 = network->addPluginV2(&out13, 1, *(yolocreator.createPlugin(yolocreator.getPluginName(), &mFC1)));
+
+    int stride2 = 16;
+    int gridsize2 = 26;
+    std::vector<PluginField> mPluginAttributes2 = {
+        PluginField("numclass", &numclass, PluginFieldType::kINT32, 1),
+        PluginField("stride", &stride2, PluginFieldType::kINT32, 1),
+        PluginField("gridsize", &gridsize2, PluginFieldType::kINT32, 1),
+        PluginField("numanchors", &numanchors, PluginFieldType::kINT32, 1)
+    };
+    PluginFieldCollection mFC2;
+    mFC2.nbFields = mPluginAttributes2.size();
+    mFC2.fields = mPluginAttributes2.data();
+    IPluginV2Layer* p2 = network->addPluginV2(&out26, 1, *(yolocreator.createPlugin(yolocreator.getPluginName(), &mFC2)));
+
+    int stride3 = 8;
+    int gridsize3 = 52;
+    std::vector<PluginField>mPluginAttributes3 = {
+        PluginField("numclass", &numclass, PluginFieldType::kINT32, 1),
+        PluginField("stride", &stride3, PluginFieldType::kINT32, 1),
+        PluginField("gridsize", &gridsize3, PluginFieldType::kINT32, 1),
+        PluginField("numanchors", &numanchors, PluginFieldType::kINT32, 1)
+    };
+    PluginFieldCollection mFC3;
+    mFC3.nbFields = mPluginAttributes3.size();
+    mFC3.fields = mPluginAttributes3.data();
+    IPluginV2Layer* p3 = network->addPluginV2(&out52, 1,*(yolocreator.createPlugin(yolocreator.getPluginName(), &mFC3)));
 
     network->markOutput(*p1->getOutput(0));
     network->markOutput(*p2->getOutput(0));
