@@ -523,7 +523,7 @@ void runWithYoloPlugin(bool int8=false){
 
     auto m_Context = mEngine->createExecutionContext();
     assert(m_Context != nullptr);
-    std::string m_InputBlobName = "data";
+    std::string m_InputBlobName = mEngine->getBindingName(0);
     m_InputBindingIndex = mEngine->getBindingIndex(m_InputBlobName.c_str());
     assert(m_InputBindingIndex != -1);
     assert(m_BatchSize <= static_cast<uint>(mEngine->getMaxBatchSize()));
@@ -536,7 +536,7 @@ void runWithYoloPlugin(bool int8=false){
     TensorInfo tmp;
     tmp.anchors = {10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326};
     tmp.bindingIndex = 1;
-    tmp.blobName = "yolo1";
+    tmp.blobName = mEngine->getBindingName(1);
     tmp.gridSize = 13;
     tmp.hostBuffer;
     tmp.masks = {6,7,8};
@@ -548,7 +548,7 @@ void runWithYoloPlugin(bool int8=false){
             * (tmp.numBBoxes * (5 + tmp.numClasses));
     m_OutputTensors.push_back(tmp);
     tmp.bindingIndex = 2;
-    tmp.blobName = "yolo2";
+    tmp.blobName = mEngine->getBindingName(2);
     tmp.gridSize = 26;
     tmp.masks = {3,4,5};
     tmp.stride = 16;
@@ -557,7 +557,7 @@ void runWithYoloPlugin(bool int8=false){
             * (tmp.numBBoxes * (5 + tmp.numClasses));
     m_OutputTensors.push_back(tmp);
     tmp.bindingIndex = 3;
-    tmp.blobName = "yolo3";
+    tmp.blobName = mEngine->getBindingName(3);
     tmp.gridSize = 52;
     tmp.masks = {0,1,2};
     tmp.stride = 8;
