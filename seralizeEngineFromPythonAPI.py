@@ -83,7 +83,7 @@ def get_engine(onnx_file_path, engine_file_path=""):
             ytensor1 = network.add_plugin_v2(
                 [tensor1],
                 plugin_creator.create_plugin('Yolo_TRT', trt.PluginFieldCollection([
-                    trt.PluginField("numclass", np.array(7, dtype=np.int32), trt.PluginFieldType.INT32),
+                    trt.PluginField("numclass", np.array(80, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("stride", np.array(32, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("gridesize", np.array(13, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("numanchors", np.array(3, dtype=np.int32), trt.PluginFieldType.INT32)
@@ -93,7 +93,7 @@ def get_engine(onnx_file_path, engine_file_path=""):
             ytensor2 = network.add_plugin_v2(
                 [tensor2],
                 plugin_creator.create_plugin('Yolo_TRT', trt.PluginFieldCollection([
-                    trt.PluginField("numclass", np.array(7, dtype=np.int32), trt.PluginFieldType.INT32),
+                    trt.PluginField("numclass", np.array(80, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("stride", np.array(16, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("gridesize", np.array(26, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("numanchors", np.array(3, dtype=np.int32), trt.PluginFieldType.INT32)
@@ -103,7 +103,7 @@ def get_engine(onnx_file_path, engine_file_path=""):
             ytensor3 = network.add_plugin_v2(
                 [tensor3],
                 plugin_creator.create_plugin('Yolo_TRT', trt.PluginFieldCollection([
-                    trt.PluginField("numclass", np.array(7, dtype=np.int32), trt.PluginFieldType.INT32),
+                    trt.PluginField("numclass", np.array(80, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("stride", np.array(8, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("gridesize", np.array(52, dtype=np.int32), trt.PluginFieldType.INT32),
                     trt.PluginField("numanchors", np.array(3, dtype=np.int32), trt.PluginFieldType.INT32)
