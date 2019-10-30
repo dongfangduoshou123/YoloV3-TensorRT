@@ -22,6 +22,10 @@ Requirment:
 
     Install the TensorRT6.0.1.5,(I use CUDA10.1 version, but other cuda version's TensorRT should also work well).
 
+Problem need to solve:
+   
+     1.after add the yolo plugin in c++, it always failed to serialize the builded engine, I think this is a bug of the tensorrt's
+     binary Components...currently I add a python script to serialize the trt engine and then use it in c++ for deploy.
 
 Reference:
 
