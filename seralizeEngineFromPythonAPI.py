@@ -4,7 +4,7 @@ from __future__ import print_function
 from __future__ import print_function
 import numpy as np
 import ctypes
-ctypes.cdll.LoadLibrary('/opt/caffe2_yolov3/TensorRT-6.0.1.5/lib/libnvinfer_plugin.so')
+ctypes.cdll.LoadLibrary('/opt/TensorRT-6.0.1.5/lib/libnvinfer_plugin.so')
 import numpy as np
 import tensorrt as trt
 import pycuda.driver as cuda
