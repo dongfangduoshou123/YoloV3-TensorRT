@@ -249,7 +249,7 @@ IPluginV2Ext* YoloPluginCreator::createPlugin(const char* name, const PluginFiel
         {
             assert(fields[i].type == PluginFieldType::kINT32);
             stride_ = *(static_cast<const int*>(fields[i].data));
-        }else if(!strcmp(attrName, "gridesize")){
+        }else if(!strcmp(attrName, "gridsize")){
             assert(fields[i].type == PluginFieldType::kINT32);
             gridesize_ = *(static_cast<const int*>(fields[i].data));
         }else if(!strcmp(attrName, "numanchors")){
