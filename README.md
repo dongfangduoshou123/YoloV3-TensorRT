@@ -24,8 +24,8 @@ Requirment:
 
 Problem need to solve:
    
-     1.after add the yolo plugin in c++, it always failed to serialize the builded engine, I think this is a bug of the tensorrt's
-     binary Components...currently I add a python script to serialize the trt engine and then use it in c++ for deploy.
+     I have Solved this problem, more detail jump to this issue:https://github.com/NVIDIA/TensorRT/issues/178(after add the yolo plugin in c++, it always failed to serialize the builded engine, I think this is a bug of the tensorrt's
+     binary Components...currently I add a python script to serialize the trt engine and then use it in c++ for deploy.)
 
 Reference:
 
