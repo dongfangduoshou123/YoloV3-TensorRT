@@ -14,6 +14,13 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <unistd.h>
+
 #include "yoloPlugin.h"
 #include <opencv2/opencv.hpp>
 struct BBox
@@ -174,16 +181,16 @@ std::vector<BBoxInfo> decodeTensor(const int imageIdx, const int imageH, const i
 void doInference(const unsigned char* input, const uint batchSize, cudaStream_t& m_CudaStream, cudaEvent_t& m_CudaEvent, nvinfer1::IExecutionContext*m_Context, std::vector<void*>& m_DeviceBuffers, int m_InputBindingIndex,int m_InputSize,std::vector<TensorInfo>&m_OutputTensors)
 {
     assert(batchSize <= m_BatchSize && "Image batch size exceeds TRT engines batch size");
-    ASSERT(cudaMemcpyAsync(m_DeviceBuffers.at(m_InputBindingIndex), input,
+    assert(cudaMemcpyAsync(m_DeviceBuffers.at(m_InputBindingIndex), input,
                                   batchSize * m_InputSize * sizeof(float), cudaMemcpyHostToDevice,
                                   m_CudaStream) == cudaSuccess);
 
 //    m_Context->enqueue(batchSize, m_DeviceBuffers.data(), m_CudaStream, nullptr);
-    ASSERT(m_Context->enqueueV2(m_DeviceBuffers.data(),m_CudaStream, &m_CudaEvent));
+    assert(m_Context->enqueueV2(m_DeviceBuffers.data(),m_CudaStream, &m_CudaEvent));
 
     for (auto& tensor : m_OutputTensors)
     {
-        ASSERT(cudaMemcpyAsync(tensor.hostBuffer, m_DeviceBuffers.at(tensor.bindingIndex),
+        assert(cudaMemcpyAsync(tensor.hostBuffer, m_DeviceBuffers.at(tensor.bindingIndex),
                                       batchSize * tensor.volume * sizeof(float),
                                       cudaMemcpyDeviceToHost, m_CudaStream) == cudaSuccess);
     }
