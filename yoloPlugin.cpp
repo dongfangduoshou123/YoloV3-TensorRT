@@ -16,6 +16,7 @@ created by wzq 2019 10.24
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "utils.h"
 #include "kernel.h"
 #include "yoloPlugin.h"
 #include <assert.h>
@@ -98,8 +99,8 @@ size_t Yolo::getWorkspaceSize(int maxBatchSize) const
 
 int Yolo::enqueue(int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream)
 {
-    assert(cudaYoloLayerV3(inputs[0],outputs[0],batchSize, gridesize_,numclass_, numanchors_, gridesize_*gridesize_*numanchors_*(5 + numclass_),stream)
-            == cudaSuccess);
+    CHECK(cudaYoloLayerV3(inputs[0],outputs[0],batchSize, gridesize_,numclass_, numanchors_, gridesize_*gridesize_*numanchors_*(5 + numclass_),stream));
+    
     return 0;
 }
 
