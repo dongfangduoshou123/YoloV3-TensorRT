@@ -23,6 +23,7 @@
 
 #include "yoloPlugin.h"
 #include <opencv2/opencv.hpp>
+#include "utils.h"
 struct BBox
 {
     float x1, y1, x2, y2;
@@ -181,20 +182,20 @@ std::vector<BBoxInfo> decodeTensor(const int imageIdx, const int imageH, const i
 void doInference(const unsigned char* input, const uint batchSize, cudaStream_t& m_CudaStream, cudaEvent_t& m_CudaEvent, nvinfer1::IExecutionContext*m_Context, std::vector<void*>& m_DeviceBuffers, int m_InputBindingIndex,int m_InputSize,std::vector<TensorInfo>&m_OutputTensors)
 {
     assert(batchSize <= m_BatchSize && "Image batch size exceeds TRT engines batch size");
-    assert(cudaMemcpyAsync(m_DeviceBuffers.at(m_InputBindingIndex), input,
+    CHECK(cudaMemcpyAsync(m_DeviceBuffers.at(m_InputBindingIndex), input,
                                   batchSize * m_InputSize * sizeof(float), cudaMemcpyHostToDevice,
-                                  m_CudaStream) == cudaSuccess);
+                                  m_CudaStream));
 
 //    m_Context->enqueue(batchSize, m_DeviceBuffers.data(), m_CudaStream, nullptr);
     assert(m_Context->enqueueV2(m_DeviceBuffers.data(),m_CudaStream, &m_CudaEvent));
 
     for (auto& tensor : m_OutputTensors)
     {
-        assert(cudaMemcpyAsync(tensor.hostBuffer, m_DeviceBuffers.at(tensor.bindingIndex),
+        CHECK(cudaMemcpyAsync(tensor.hostBuffer, m_DeviceBuffers.at(tensor.bindingIndex),
                                       batchSize * tensor.volume * sizeof(float),
-                                      cudaMemcpyDeviceToHost, m_CudaStream) == cudaSuccess);
+                                      cudaMemcpyDeviceToHost, m_CudaStream));
     }
-    cudaStreamSynchronize(m_CudaStream);
+    CHECK(cudaStreamSynchronize(m_CudaStream));
 }
 uint64_t get3DTensorVolume(nvinfer1::Dims inputDims)
 {
@@ -511,8 +512,8 @@ void runWithYoloPlugin(bool int8=false){
     assert(m_BatchSize <= static_cast<uint>(mEngine->getMaxBatchSize()));
     m_DeviceBuffers.resize(mEngine->getNbBindings(), nullptr);
     assert(m_InputBindingIndex != -1 && "Invalid input binding index");
-    assert(cudaMalloc(&m_DeviceBuffers.at(m_InputBindingIndex),
-                             m_BatchSize * m_InputSize * sizeof(float)) == cudaSuccess);
+    CHECK(cudaMalloc(&m_DeviceBuffers.at(m_InputBindingIndex),
+                             m_BatchSize * m_InputSize * sizeof(float)));
 
     std::vector<TensorInfo>m_OutputTensors;
     TensorInfo tmp;
@@ -551,15 +552,15 @@ void runWithYoloPlugin(bool int8=false){
     {
         tensor.bindingIndex = mEngine->getBindingIndex(tensor.blobName.c_str());
         assert((tensor.bindingIndex != -1) && "Invalid output binding index");
-        assert(cudaMalloc(&m_DeviceBuffers.at(tensor.bindingIndex),
-                                 m_BatchSize * tensor.volume * sizeof(float))==cudaSuccess);
-        assert(
-            cudaMallocHost(&tensor.hostBuffer, tensor.volume * m_BatchSize * sizeof(float))==cudaSuccess);
+        CHECK(cudaMalloc(&m_DeviceBuffers.at(tensor.bindingIndex),
+                                 m_BatchSize * tensor.volume * sizeof(float)));
+        CHECK(
+            cudaMallocHost(&tensor.hostBuffer, tensor.volume * m_BatchSize * sizeof(float)));
     }
     cudaStream_t m_CudaStream;
     cudaEvent_t m_CudaEvent;
-    assert(cudaEventCreate(&m_CudaEvent) == cudaSuccess);
-    assert(cudaStreamCreate(&m_CudaStream) == cudaSuccess);
+    CHECK(cudaEventCreate(&m_CudaEvent));
+    CHECK(cudaStreamCreate(&m_CudaStream));
 
     assert((mEngine->getNbBindings() == (1 + m_OutputTensors.size())
             && "Binding info doesn't match between cfg and engine file \n"));
