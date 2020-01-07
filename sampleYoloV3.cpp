@@ -439,9 +439,10 @@ void runWithYoloPlugin(bool int8=false){
     
 
     YoloPluginCreator yolocreator;
-    std::vector<int>param1 = {3, 7, 32, 13};
-    std::vector<int>param2 = {3, 7, 16, 26};
-    std::vector<int>param3 = {3, 7, 8,  52};
+    const int numClasses = 80;
+    std::vector<int>param1 = {3, numClasses, 32, 13};
+    std::vector<int>param2 = {3, numClasses, 16, 26};
+    std::vector<int>param3 = {3, numClasses, 8,  52};
     IPluginV2Layer* p1 = network->addPluginV2(&out13, 1, *(yolocreator.deserializePlugin(yolocreator.getPluginName(),param1.data(),param1.size()*sizeof(int))));
     IPluginV2Layer* p2 = network->addPluginV2(&out26, 1, *(yolocreator.deserializePlugin(yolocreator.getPluginName(),param2.data(),param2.size()*sizeof(int))));
     IPluginV2Layer* p3 = network->addPluginV2(&out52, 1, *(yolocreator.deserializePlugin(yolocreator.getPluginName(),param3.data(),param3.size()*sizeof(int))));
@@ -524,7 +525,7 @@ void runWithYoloPlugin(bool int8=false){
     tmp.hostBuffer;
     tmp.masks = {6,7,8};
     tmp.numBBoxes = 3;
-    tmp.numClasses = 80;
+    tmp.numClasses = numClasses;
     tmp.stride = 32;
     tmp.volume = tmp.gridSize
             * tmp.gridSize
@@ -596,7 +597,7 @@ void runWithYoloPlugin(bool int8=false){
             std::vector<BBoxInfo> curBInfo = decodeTensor(0, 416, 416, tensor);
             binfo.insert(binfo.end(), curBInfo.begin(), curBInfo.end());
         }
-        remaining = nmsAllClasses(0.5, binfo, 7);
+        remaining = nmsAllClasses(0.5, binfo, numClasses);
     }
 
     time_t t1;
