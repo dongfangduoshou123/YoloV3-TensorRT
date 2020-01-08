@@ -479,7 +479,7 @@ void runWithYoloPlugin(bool int8=false){
         std::cout << "deserialize for local " << trtpath << std::endl;
         nvinfer1::IRuntime*iruntime = nvinfer1::createInferRuntime(gLogger.getTRTLogger());
         std::ifstream intrt(trtpath, ios::binary);
-        intrt.seekg(0, std::ios::beg);
+        intrt.seekg(0, std::ios::end);
         size_t length = intrt.tellg();
         intrt.seekg(0, std::ios::beg);
         std::vector<char>data(length);
