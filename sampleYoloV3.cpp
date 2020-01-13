@@ -1,7 +1,5 @@
 #include "trtDarkNet53.h"
-//zhe zhou de gan dian shi er le
-//mmcv mmdetection
-//zhuan zhu yu jiasu suan fa shixian
+//add by wzq 2020.1.13
 int main()
 {
     using namespace trt;
