@@ -11,6 +11,7 @@ Feature:
     2:Run on the current newest TensorRT version 6.0.1.5.
     3:test on NVIDIA 1060 at 37 fps in f32 mode and 77 fps in int8 mode.
     4.include the post process such as nms to get the final detection result.
+    5.add a tensorrt api class wrraper to unify the interface for all usage cases.(how to use please see trtNetWork.h/cpp trtDarkNet53.h/cpp and sampleYoloV3.cpp)
     
 Build:
 
