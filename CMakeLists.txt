@@ -37,6 +37,9 @@ list(APPEND TensorRTYOLOV3_SRCS
   "${CMAKE_CURRENT_SOURCE_DIR}/common/sampleOptions.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/yoloPlugin.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/kernel.cu"
+  "${CMAKE_CURRENT_SOURCE_DIR}/trtNetWork.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/trtNetWork.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/trtDarkNet53.cpp"
 )
 
 set(YoloV3SRCS)
