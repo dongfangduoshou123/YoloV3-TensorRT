@@ -9,7 +9,7 @@ int main()
     ModelInfo minfo;
     BuildInfo binfo;
     minfo.format = ModelFormat::kONNX;
-    minfo.onnxmodelfile = "/opt/caffe2_yolov3/TensorRT-6.0.1.5/samples/python/yolov3_onnx/yolov3.onnx";
+    minfo.onnxmodelfile = "/opt/TensorRT-6.0.1.5/samples/python/yolov3_onnx/yolov3.onnx";
     minfo.outputs;
 
     binfo.maxWorkspaceSize = 1024;
