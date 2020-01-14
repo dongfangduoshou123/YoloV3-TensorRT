@@ -32,3 +32,5 @@ Reference:
 
     1:https://github.com/NVIDIA-AI-IOT/deepstream_reference_apps (restructure branch, not master branch)
     2:https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide
+
+Welcome your star！！！
