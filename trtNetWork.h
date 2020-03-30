@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <cuda_runtime.h>
 #include <unordered_map>
+#include <vector>
+#include <numeric>
 
 class CudaEvent;
 inline void cudaCheck(cudaError_t ret, std::ostream& err = std::cerr){
