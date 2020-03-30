@@ -82,9 +82,9 @@ bool YoloTrtNet::CreateNetwork()
     nvinfer1::ITensor *out26 = network->getOutput(1);
     nvinfer1::ITensor *out52 = network->getOutput(2);
     YoloPluginCreator yolocreator;
-    std::vector<int>param1 = {3, 7, 32, 13};
-    std::vector<int>param2 = {3, 7, 16, 26};
-    std::vector<int>param3 = {3, 7, 8,  52};
+    std::vector<int>param1 = {3, 80, 32, 13};
+    std::vector<int>param2 = {3, 80, 16, 26};
+    std::vector<int>param3 = {3, 80, 8,  52};
     IPluginV2Layer* p1 = network->addPluginV2(&out13, 1, *(yolocreator.deserializePlugin(yolocreator.getPluginName(),param1.data(),param1.size()*sizeof(int))));
     IPluginV2Layer* p2 = network->addPluginV2(&out26, 1, *(yolocreator.deserializePlugin(yolocreator.getPluginName(),param2.data(),param2.size()*sizeof(int))));
     IPluginV2Layer* p3 = network->addPluginV2(&out52, 1, *(yolocreator.deserializePlugin(yolocreator.getPluginName(),param3.data(),param3.size()*sizeof(int))));
@@ -117,7 +117,7 @@ bool YoloTrtNet::CreateEngineAndSerialize(long maxWorkspaceSize, BuilderFlag fla
         tmp.hostBuffer = binds[i].hostBufferBinds[1].get();
         tmp.masks = {6,7,8};
         tmp.numBBoxes = 3;
-        tmp.numClasses = 7;
+        tmp.numClasses = 80;
         tmp.stride = 32;
         tmp.volume = tmp.gridSize
                 * tmp.gridSize
@@ -157,7 +157,7 @@ bool YoloTrtNet::EngineDeserialize()
         tmp.hostBuffer = binds[i].hostBufferBinds[1].get();
         tmp.masks = {6,7,8};
         tmp.numBBoxes = 3;
-        tmp.numClasses = 7;
+        tmp.numClasses = 80;
         tmp.stride = 32;
         tmp.volume = tmp.gridSize
                 * tmp.gridSize

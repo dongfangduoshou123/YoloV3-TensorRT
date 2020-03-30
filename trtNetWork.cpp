@@ -4,6 +4,16 @@
 #include <fstream>
 #include <iostream>
 
+#define NV_CUDA_CHECK(status)                                                                      \
+    {                                                                                              \
+        if (status != 0)                                                                           \
+        {                                                                                          \
+            std::cout << "Cuda failure: " << cudaGetErrorString(status) << " in file " << __FILE__ \
+                      << " at line " << __LINE__ << std::endl;                                     \
+            abort();                                                                               \
+        }                                                                                          \
+    }
+
 namespace trt{
 using namespace nvinfer1;
 struct BufferShutter
@@ -94,25 +104,25 @@ void trtNetWork::Inference(void *data, int contextIndex, int batch)
     assert(contextIndex < buildinfo.contextNum);
     std::vector<void*>& cur = m_DeviceBuffers[contextIndex];
     if(batch > 0){
-        assert(cudaMemcpyAsync(cur[0], data,
+        NV_CUDA_CHECK(cudaMemcpyAsync(cur[0], data,
                                      binds[contextIndex].deviceBufferBinds[0].size() , cudaMemcpyHostToDevice,
-                                      streams[contextIndex]->get()) == cudaSuccess);
+                                      streams[contextIndex]->get()));
 
         auto ret = exeContexts[contextIndex]->enqueue(batch, cur.data(), streams[contextIndex]->get(),nullptr);
     }else{
-        assert(cudaMemcpyAsync(cur[0], data,
+        NV_CUDA_CHECK(cudaMemcpyAsync(cur[0], data,
                                      binds[contextIndex].deviceBufferBinds[0].size() , cudaMemcpyHostToDevice,
-                                      streams[contextIndex]->get()) == cudaSuccess);
+                                      streams[contextIndex]->get()));
 
-        assert(exeContexts[contextIndex]->enqueueV2(cur.data(), streams[contextIndex]->get(), nullptr));
+        exeContexts[contextIndex]->enqueueV2(cur.data(), streams[contextIndex]->get(), nullptr);
 
     }
 
     for (int i =1;i < cur.size();i ++)
     {
-        assert(cudaMemcpyAsync(binds[contextIndex].hostBufferBinds[i].get(), cur[i],
+        NV_CUDA_CHECK(cudaMemcpyAsync(binds[contextIndex].hostBufferBinds[i].get(), cur[i],
                                       binds[contextIndex].hostBufferBinds[i].size(),
-                                      cudaMemcpyDeviceToHost, streams[contextIndex]->get()) == cudaSuccess);
+                                      cudaMemcpyDeviceToHost, streams[contextIndex]->get()));
     }
     cudaStreamSynchronize(streams[contextIndex]->get());
 }
