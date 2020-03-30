@@ -113,7 +113,7 @@ public:
             std::vector<BBoxInfo> curBInfo = decodeTensor(0, 416, 416, tensor);
             bxinfo.insert(bxinfo.end(), curBInfo.begin(), curBInfo.end());
         }
-        return std::move(nmsAllClasses(0.5, bxinfo, 7));
+        return std::move(nmsAllClasses(0.5, bxinfo, 80));
     }
 
     virtual bool CreateNetwork() override;
