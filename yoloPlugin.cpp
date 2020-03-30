@@ -212,7 +212,7 @@ YoloPluginCreator::YoloPluginCreator()
 
     mPluginAttributes.emplace_back(PluginField("numclass", nullptr, PluginFieldType::kINT32, 1));
     mPluginAttributes.emplace_back(PluginField("stride", nullptr, PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(PluginField("gridsize", nullptr, PluginFieldType::kINT32, 1));
+    mPluginAttributes.emplace_back(PluginField("gridesize", nullptr, PluginFieldType::kINT32, 1));
     mPluginAttributes.emplace_back(PluginField("numanchors", nullptr, PluginFieldType::kINT32, 1));
 
     mFC.nbFields = mPluginAttributes.size();
@@ -250,7 +250,7 @@ IPluginV2Ext* YoloPluginCreator::createPlugin(const char* name, const PluginFiel
         {
             assert(fields[i].type == PluginFieldType::kINT32);
             stride_ = *(static_cast<const int*>(fields[i].data));
-        }else if(!strcmp(attrName, "gridsize")){
+        }else if(!strcmp(attrName, "gridesize")){
             assert(fields[i].type == PluginFieldType::kINT32);
             gridesize_ = *(static_cast<const int*>(fields[i].data));
         }else if(!strcmp(attrName, "numanchors")){
